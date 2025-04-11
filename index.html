@@ -110,6 +110,11 @@
             font-size: 0.9rem;
             opacity: 0.8;
         }
+        
+        .error {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -241,13 +246,24 @@
         // Voice control setup
         function initializeVoiceRecognition() {
             try {
-                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition)();
+                // Check if browser supports speech recognition
+                if (!('webkitSpeechRecognition' in window)) {
+                    throw new Error('Speech recognition not supported in this browser');
+                }
+                
+                // Check if we're in a secure context (HTTPS or localhost)
+                if (!window.isSecureContext) {
+                    throw new Error('Speech recognition requires a secure context (HTTPS or localhost)');
+                }
+                
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
                 recognition.continuous = true;
                 recognition.interimResults = false;
                 recognition.lang = 'en-US';
                 
                 recognition.onstart = function() {
                     voiceStatus.textContent = 'Voice control is active. Speak commands.';
+                    voiceStatus.classList.remove('error');
                     isVoiceEnabled = true;
                     voiceBtn.textContent = 'Disable Voice Control';
                 };
@@ -255,13 +271,24 @@
                 recognition.onerror = function(event) {
                     console.error('Speech recognition error', event.error);
                     voiceStatus.textContent = 'Error: ' + event.error;
+                    voiceStatus.classList.add('error');
                     isVoiceEnabled = false;
                     voiceBtn.textContent = 'Enable Voice Control';
+                    
+                    // Don't restart if the error was "no-speech" or "audio-capture"
+                    if (event.error === 'no-speech' || event.error === 'audio-capture') {
+                        recognition.stop();
+                    }
                 };
                 
                 recognition.onend = function() {
                     if (isVoiceEnabled) {
-                        recognition.start(); // Restart recognition if still enabled
+                        // Add a small delay before restarting to avoid rapid cycling
+                        setTimeout(() => {
+                            if (isVoiceEnabled) {
+                                recognition.start();
+                            }
+                        }, 500);
                     }
                 };
                 
@@ -270,6 +297,7 @@
                     const command = event.results[last][0].transcript.trim().toLowerCase();
                     
                     voiceStatus.textContent = `Heard: "${command}"`;
+                    voiceStatus.classList.remove('error');
                     
                     // Process commands
                     if (command.includes('start') || command.includes('begin')) {
@@ -286,8 +314,9 @@
                 
                 recognition.start();
             } catch (e) {
-                console.error('Speech recognition not supported', e);
-                voiceStatus.textContent = 'Speech recognition not supported in your browser';
+                console.error('Speech recognition initialization failed', e);
+                voiceStatus.textContent = e.message;
+                voiceStatus.classList.add('error');
                 voiceBtn.disabled = true;
             }
         }
@@ -302,6 +331,7 @@
                 isVoiceEnabled = false;
                 voiceBtn.textContent = 'Enable Voice Control';
                 voiceStatus.textContent = 'Voice control is disabled';
+                voiceStatus.classList.remove('error');
             }
         });
     </script>
