@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice & Keyboard Controlled Stopwatch</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            text-align: center;
+        }
+        
+        .container {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .display {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        button {
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        #startBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        #stopBtn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        #resetBtn {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .voice-control {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #voiceBtn {
+            background-color: #9c27b0;
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+        }
+        
+        #voiceStatus {
+            margin-top: 1rem;
+            font-style: italic;
+            min-height: 1.5rem;
+        }
+        
+        .commands {
+            margin-top: 2rem;
+            text-align: left;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+        }
+        
+        h1 {
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .keyboard-hint {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice & Keyboard Controlled Stopwatch</h1>
+        
+        <div class="display" id="display">00:00:00.00</div>
+        
+        <div class="buttons">
+            <button id="startBtn">Start</button>
+            <button id="stopBtn">Stop</button>
+            <button id="resetBtn">Reset</button>
+        </div>
+        
+        <div class="keyboard-hint">
+            Keyboard: Space = Start/Stop | Shift+Space = Reset
+        </div>
+        
+        <div class="voice-control">
+            <button id="voiceBtn">Enable Voice Control</button>
+            <div id="voiceStatus">Voice control is currently disabled</div>
+        </div>
+        
+        <div class="commands">
+            <h3>Voice Commands:</h3>
+            <ul>
+                <li>"Start" or "Begin" - Starts the stopwatch</li>
+                <li>"Stop" or "Pause" - Stops the stopwatch</li>
+                <li>"Reset" or "Restart" - Resets the stopwatch</li>
+                <li>"Lap" - Records a lap time (coming soon)</li>
+            </ul>
+            
+            <h3>Keyboard Shortcuts:</h3>
+            <ul>
+                <li><strong>Spacebar</strong> - Toggle Start/Stop</li>
+                <li><strong>Shift + Spacebar</strong> - Reset</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Stopwatch functionality
+        let startTime;
+        let elapsedTime = 0;
+        let timerInterval;
+        let isRunning = false;
+        
+        const display = document.getElementById('display');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceStatus = document.getElementById('voiceStatus');
+        
+        // Voice recognition
+        let recognition;
+        let isVoiceEnabled = false;
+        
+        function formatTime(time) {
+            let hours = Math.floor(time / 3600000);
+            let minutes = Math.floor((time % 3600000) / 60000);
+            let seconds = Math.floor((time % 60000) / 1000);
+            let milliseconds = Math.floor((time % 1000) / 10);
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        }
+        
+        function startTimer() {
+            if (!isRunning) {
+                startTime = Date.now() - elapsedTime;
+                timerInterval = setInterval(function() {
+                    elapsedTime = Date.now() - startTime;
+                    display.textContent = formatTime(elapsedTime);
+                }, 10);
+                isRunning = true;
+                startBtn.textContent = "Running...";
+                stopBtn.textContent = "Stop";
+            }
+        }
+        
+        function stopTimer() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                startBtn.textContent = "Start";
+                stopBtn.textContent = "Paused";
+            }
+        }
+        
+        function toggleTimer() {
+            if (isRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        }
+        
+        function resetTimer() {
+            stopTimer();
+            elapsedTime = 0;
+            display.textContent = '00:00:00.00';
+            startBtn.textContent = "Start";
+            stopBtn.textContent = "Stop";
+        }
+        
+        // Button event listeners
+        startBtn.addEventListener('click', startTimer);
+        stopBtn.addEventListener('click', stopTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        
+        // Keyboard event listener
+        document.addEventListener('keydown', function(event) {
+            // Prevent spacebar from scrolling the page
+            if (event.code === 'Space') {
+                event.preventDefault();
+            }
+            
+            // Space to toggle start/stop
+            if (event.code === 'Space' && !event.shiftKey) {
+                toggleTimer();
+            }
+            
+            // Shift+Space to reset
+            if (event.code === 'Space' && event.shiftKey) {
+                resetTimer();
+            }
+        });
+        
+        // Voice control setup
+        function initializeVoiceRecognition() {
+            try {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition)();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = function() {
+                    voiceStatus.textContent = 'Voice control is active. Speak commands.';
+                    isVoiceEnabled = true;
+                    voiceBtn.textContent = 'Disable Voice Control';
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error', event.error);
+                    voiceStatus.textContent = 'Error: ' + event.error;
+                    isVoiceEnabled = false;
+                    voiceBtn.textContent = 'Enable Voice Control';
+                };
+                
+                recognition.onend = function() {
+                    if (isVoiceEnabled) {
+                        recognition.start(); // Restart recognition if still enabled
+                    }
+                };
+                
+                recognition.onresult = function(event) {
+                    const last = event.results.length - 1;
+                    const command = event.results[last][0].transcript.trim().toLowerCase();
+                    
+                    voiceStatus.textContent = `Heard: "${command}"`;
+                    
+                    // Process commands
+                    if (command.includes('start') || command.includes('begin')) {
+                        startTimer();
+                    } else if (command.includes('stop') || command.includes('pause')) {
+                        stopTimer();
+                    } else if (command.includes('reset') || command.includes('restart')) {
+                        resetTimer();
+                    } else if (command.includes('lap')) {
+                        // Lap functionality could be added here
+                        voiceStatus.textContent += ' (Lap recorded)';
+                    }
+                };
+                
+                recognition.start();
+            } catch (e) {
+                console.error('Speech recognition not supported', e);
+                voiceStatus.textContent = 'Speech recognition not supported in your browser';
+                voiceBtn.disabled = true;
+            }
+        }
+        
+        voiceBtn.addEventListener('click', function() {
+            if (!isVoiceEnabled) {
+                initializeVoiceRecognition();
+            } else {
+                if (recognition) {
+                    recognition.stop();
+                }
+                isVoiceEnabled = false;
+                voiceBtn.textContent = 'Enable Voice Control';
+                voiceStatus.textContent = 'Voice control is disabled';
+            }
+        });
+    </script>
+</body>
+</html>
